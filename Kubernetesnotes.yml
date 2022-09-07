@@ -1,0 +1,160 @@
+>K8
+  -POD--> Container Wrapper
+  -Container --> Container by Docker
+  -Node-->Host Machine
+  -Master Node --> k8 Master Node
+  -Cluster--> Collection of Nodes
+  -Softwares
+    -Docker
+    -Kubelet --> cli same as Docker hub in docker
+    -Kubelet-proxy --> Network Communication Service
+
+  -Installation
+    -Docker
+    -Kubectl  -> https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/  (Install using native package management)
+              -->The Kubernetes command-line tool, kubectl, allows you to run commands against Kubernetes clusters. 
+                 You can use kubectl to deploy applications, inspect and manage cluster resources, and view logs.
+    -Minikube -> https://minikube.sigs.k8s.io/docs/start/ 
+              ->Minikube is a lightweight Kubernetes implementation that creates a VM on your local machine and deploys 
+                a simple cluster containing only one node.
+              -> will create virtual machine for kubectl
+    -Drivers --> use Docker or virtualbox etc...
+    -VirtualBox --> https://www.virtualbox.org/wiki/Linux_Downloads
+    -starting minikube using driver 
+       --> sudo usermod -aG docker $USER && newgrp docker
+       --> minikube start --driver=docker  
+
+    -kubectl commands
+        -kubectl cluster-info   -->to check info
+        -check minikube status
+        -minikube delete --all   --> to delete cluster
+
+        -Everything is Object
+      -Pods, Deployments, Services, Volume, Network etc.
+
+
+      Hirerachy 
+    -Cluster
+      -Node
+        -Pod
+          -container
+
+
+    -Pod 
+      -Pod will run inside a Node
+      -Pod contains the Containers
+      -Usually, 1 Pod contains 1 Container
+      -It has cluster IP Address (Internal)
+      -Containers inside the POD can communicate with each other using localhost
+      -Pods are emphemeral. i.e. Pods are temporary, and Kubectl add/remove PODS on run time based on the load/traffic/requirement
+      -To manage Pods controller is required e.g. Deployment Object
+
+    -Deployment  --> will create containers on demand itself don't need to create container manually
+      -It controls the Pods
+      -You can set your desire, K8 will change the state using Deployment
+      -It defines that which POD and Container to run and how many number of instances should run
+      -Deployment is Scalable
+      -We don't directly deal with PODS, but deployment setup the PODS.
+      --To Delete Deployment --> kubectl delete deployments first-app
+
+--------------Imperative Approach---------------------
+    -Create Demo 
+      -Create Node App with app.js, package.json and Dockerfile
+      -Create a local image out of Dockerfile
+      -Create a DockerHub Repository
+      -Tag the local image with Docker Hub Repo Name
+      -Push the Image
+         praffulchauhan/kube-first-app:latest
+
+
+    -Create a New Deployment (first-app) with the docker hub repo name
+      -kubectl create --help
+      -kubectl create deployment first-app --image hrithvik1innogeeks/kube-first-app:latest   --> first-app is app name can be anything
+      -kubectl describe deployments  --> to get details of deployment
+      -This should create a deployment and a Pod. To check, we can get the Pods and Deployment using 
+          -kubectl get deployments  --> to check status of deployments
+          - incase To Delete Deployment --> kubectl delete deployments first-app
+          -kubectl get pods
+      -kubectl delete deployments first-app --> to deletel deployments
+      -To check the Web based status
+        -minikube dashboard
+
+    -Services -->
+      Create the Service to access the Pod's application using load balancing tech
+      -kubectl expose deployment first-app --port=8080 --type=LoadBalancer   --> to  create service
+      -kubectl get services  --> to check services
+      -minikube service first-app --url  --> to get url 
+      -kubectl delete service first-app
+    
+    -Scaling
+      Kubectl scale deployment/first-app --replicas=3
+
+    -Update the Image
+      -Modify the source code
+      -docker build -t praffulchauhan/kube-first-app:2 .
+      -docker push kube-first-app:2
+      -kubectl set image deployment/first-app kube-first-app=praffulchauhan/kube-first-app:2  -->to update new image of dockerhub in deployment
+      -kubectl rollout status deployment/first-app  -->will automatically handle pods will recreated, destroy, scale automatically
+
+---------------Declarative Approach--------------------------
+  -Create Project
+  -Create a yaml file for deployment and service
+  -Commands to run yaml files
+    -kubectl apply -f=deployment.yaml
+    -kubectl apply -f=service.yaml
+    -kubectl delete -f-deployment.yaml --> to delete particular deployment using filename
+    -kubectl delete -f-deployment.yaml --> to delete particular service using filename
+
+  -If we change something in yaml file we have to apply deploy by using command
+    kubectl apply -f=deployment.yaml
+
+  -We can write service and deployment into single file by using
+    three --- after this copy another file content
+        
+        
+
+------------------------------AWS-----------------
+  - For private data centers using Minikube
+  - Cloud Providers i.e, AWS, Azure, Google, Cloud etc...
+    - Handle Manually using EC2 / VMs manually
+    - Use managed services like AWS EKS.
+
+  - Create a Cluster using EKS
+    - Go to EKS Sevice in the AWS Console
+    - Name of Cluster eksCluster
+    -Open a new tab and go to IAM Service
+    -Create a new role
+      - Select AWS Service Type
+      - Under the use cases -> select EKS from the Drop Down -> select EKS cluster option allow EKS cluster permission
+      -Name EKS role and create it without any further modification. i.e, eksClusterRole
+      -Go back to the Cluster Creation page, reload the role dropdown and select the item
+    Create a new VPC
+      -Go  To Cloud Formation
+      - Go to url https://docs.aws.amazon.com/eks/latest/userguide/creating-a-vpc.html#create-vpc
+      -Select the IPV4 url and provide the url into the cloud formation template s3 field
+      -without further mdifications, provide a name vpc and create the stack i.e, eksVpc
+      -Go back to cluster page and refersh the drop down of vpc and select the eksVpc vpc
+    -Further, select ipv4 and cluster endpoint access to public and private
+    -Move towards without any modifications and create the Cluster
+
+  -Install AWs ClI on you machine to update the config file of kubectl. that can be found in /<user_home>/.kube/config
+  -Generate AWS access key by selecting the security ta from the profile window or form IAM page
+  -Make sure you download the CSV file
+  -Now go to command prompt to configure the AWS with these new Access keys
+    RUN -> aws configure
+  -Connect and create a context with your logged in AWS account, Cluster and local kubectl
+    RUN -> aws eks --region us-east-1 update-kubeconfig --name eksCluster
+  --Go to Cluster -> Configuration -> Compute -> Create Noe Group
+  -Create Role for Node Group
+    -Go to IAM
+    -Create Role
+    -Select EC2 Use Case and click Next
+  - Search following and choose the appropriate settings -
+          - Search eksworker -> AmazonEKSWorkerNodePolicy
+          - Search cni -> AmazonEKS_CNI_Policy
+          - Seach ec2containerreg -> AmazonEC2ContainerRegistryReadOnly
+  -Once done, go back to the Node Group Creation, refresh the role and select the role you created
+  -Once instances are ready, create Node JS, deployment and service xml and apply it through kuectl
+  -kubectl get services will return the URL of ELB to access the web portal
+  
+      
